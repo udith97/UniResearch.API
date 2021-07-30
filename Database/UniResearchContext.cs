@@ -13,6 +13,8 @@ namespace UniResearch.API.Database
         public DbSet<Job> Jobs { get; set; }
         public DbSet<Project> Projects { get; set; }
 
+        public DbSet<User> Users { get; set; }
+
         public string DbPath { get; private set; }
 
         //public UniResearchContext(DbContextOptionsBuilder dbContextOptions)
