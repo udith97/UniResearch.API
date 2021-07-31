@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UniResearch.API.Database;
 using UniResearch.API.Entity;
 
@@ -32,9 +34,9 @@ public class ProjectController : ControllerBase
     //}
 
     [HttpGet]
-    public List<Project> GetProjects(string search) 
+    public List<Project> GetProjects(string search)
     {
-        if (!string.IsNullOrWhiteSpace(search)) 
+        if (!string.IsNullOrWhiteSpace(search))
         {
             var query = _dbContext.Projects.Where(o => EF.Functions.Like(o.ProjectName, $"%{search}%"));
             return query.ToList();
@@ -43,7 +45,7 @@ public class ProjectController : ControllerBase
     }
 
     [HttpPost]
-    public Project Insert(InsertProject model) 
+    public ActionResult<Project> Insert(InsertProject model)
     {
         var project = new Project
         {
@@ -58,36 +60,111 @@ public class ProjectController : ControllerBase
         return project;
     }
 
-    [HttpPut("(id)")]
+    [HttpPut("{id}")]
 
-    public Project Update(int id, InsertProject model) 
+    public ActionResult<Project> Update(int id, InsertProject model)
     {
-        var project = _dbContext.Projects.Where(o => o.ProjectId == id).FirstOrDefault();
+        try
+        {
+            //if (string.IsNullOrWhiteSpace(model.ProjectName))
+            //{
+            //    return BadRequest("Project Name Required.");
+            //}
 
-        project.ProjectName = model.ProjectName;
-        project.Description = model.Description;
-        project.Duration = model.Duration;
-        project.Budget = model.Budget;
+            var erros = SetErrors(model);
+            if (erros.Errors.Count() > 0) 
+            {
+                return BadRequest(erros.Errors);
+            }
 
-        _dbContext.Projects.Update(project);
-        _dbContext.SaveChanges();
-        return project;
+
+            var project = _dbContext.Projects.FirstOrDefault(o => o.ProjectId == id);
+
+            //project.ProjectId = 5;
+            project.ProjectName = model.ProjectName;
+            project.Description = model.Description;
+            project.Duration = model.Duration;
+            project.Budget = model.Budget;
+
+            _dbContext.Projects.Update(project);
+            _dbContext.SaveChanges();
+            return project;
+        }
+        catch (Exception ex)
+        {
+            //throw new Exception("There was an error updating Project record.");
+            return Problem("There was an error updating Project record.");
+        }
+
+
     }
 
-    [HttpGet("(id)")]
-    public Project GetById(int id)
+    public class ValidationError
     {
-        var project = _dbContext.Projects.Where(o => o.ProjectId == id).FirstOrDefault();
-        return project;
+        public ValidationError()
+        {
+            Errors = new Dictionary<string, string>();
+        }
+        public Dictionary<string, string> Errors{get; set;}
     }
 
-    [HttpDelete("(id)")]
-    public Project DeleteById(int id) 
+    public ValidationError SetErrors(InsertProject model) 
     {
-        var project = _dbContext.Projects.Where(o => o.ProjectId == id).FirstOrDefault();
-        _dbContext.Projects.Remove(project);
-        _dbContext.SaveChanges();
-        return project;
+        var validationerror = new ValidationError();
+        if (string.IsNullOrWhiteSpace(model.ProjectName)) 
+        {
+            validationerror.Errors.Add("ProjectName", "Project name is required.");
+        }
+        if (model.ProjectName.Length > 100) 
+        {
+            validationerror.Errors.Add("ProjectName", "Project name too long.");
+        }
+        if (string.IsNullOrWhiteSpace(model.Description)) 
+        {
+            validationerror.Errors.Add("Description", "Description is required.");
+        }
+        if (!(model.Duration != null))
+        {
+            validationerror.Errors.Add("Duration", "Duration is required.");
+        }
+        if (!(model.Budget != null))
+        {
+            validationerror.Errors.Add("Budget", "Budget is required.");
+        }
+
+        //TODO: Add more validations here
+
+        return validationerror;
+    } 
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Project>> GetById(int id)
+    {
+        var project = await _dbContext.Projects
+            .AsNoTracking() //retriev data wihtout tracking this means retriev object cannot be updated.(read only)
+            .FirstOrDefaultAsync(o => o.ProjectId == id);
+        if (project != null) 
+        {
+            return Ok(project);
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public ActionResult<Project> DeleteById(int id) 
+    {
+        var project = _dbContext.Projects.FirstOrDefault(o => o.ProjectId == id);
+        if (project != null) 
+        {
+            _dbContext.Projects.Remove(project);
+            _dbContext.SaveChanges();
+            return Ok("Object Deleted.");
+        }
+
+        return NoContent();
+        
+        
     }
 }
 

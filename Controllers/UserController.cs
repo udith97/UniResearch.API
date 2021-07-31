@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -45,7 +46,7 @@ namespace UniResearch.API.Controllers
         }
 
         [HttpPost]
-        public User Insert(InsertUser model) 
+        public ActionResult<User> Insert(InsertUser model) 
         {
             var user = new User
             {
@@ -62,36 +63,109 @@ namespace UniResearch.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public User Update(int id, InsertUser model) 
+        public ActionResult<User> Update(int id, InsertUser model) 
         {
-            var user = _dbContext.Users.Where(o => o.UserId == id).FirstOrDefault();
 
-            user.FirstName = model.FirstName;
-            user.LastName = model.LastName;
-            user.Email = model.Email;
-            user.DateofBirth = model.DateofBirth;
-            user.UserType = model.UserType;
+            try
+            {
+                var erros = SetErrors(model);
+                if (erros.Errors.Count() > 0)
+                {
+                    return BadRequest(erros.Errors);
+                }
 
-            _dbContext.Users.Update(user);
-            _dbContext.SaveChanges();
-            return user;
+                var user = _dbContext.Users.FirstOrDefault(o => o.UserId == id);
+
+                user.FirstName = model.FirstName;
+                user.LastName = model.LastName;
+                user.Email = model.Email;
+                user.DateofBirth = model.DateofBirth;
+                user.UserType = model.UserType;
+
+                _dbContext.Users.Update(user);
+                _dbContext.SaveChanges();
+                return user;
+            }
+            catch (Exception EX) 
+            {
+                return Problem("There was an error updating User record.");
+            }
+        }
+
+        public class ValidationError
+        {
+            public ValidationError()
+            {
+                Errors = new Dictionary<string, string>();
+            }
+            public Dictionary<string, string> Errors { get; set; }
+        }
+
+        public ValidationError SetErrors(InsertUser model)
+        {
+            var validationerror = new ValidationError();
+            if (string.IsNullOrWhiteSpace(model.FirstName))
+            {
+                validationerror.Errors.Add("FirstName", "FirstName is required.");
+            }
+            if (model.FirstName.Length > 50)
+            {
+                validationerror.Errors.Add("FirstName", "FirstName  too long.");
+            }
+            if (string.IsNullOrWhiteSpace(model.LastName))
+            {
+                validationerror.Errors.Add("LastName", "LastName is required.");
+            }
+            if (model.LastName.Length > 50)
+            {
+                validationerror.Errors.Add("LastName", "LastName is required.");
+            }
+            if (string.IsNullOrWhiteSpace(model.Email))
+            {
+                validationerror.Errors.Add("Email", "Email is required.");
+            }
+            if (model.Email.Length > 100)
+            {
+                validationerror.Errors.Add("Email", "Email is required.");
+            }
+            if (!(model.UserType != null))
+            {
+                validationerror.Errors.Add("UserType", "UserType is required.");
+            }
+
+
+            //TODO: Add more validations here
+
+            return validationerror;
         }
 
         [HttpGet("{id}")]
-        public User GetById(int id)
+        public async Task<ActionResult<User>> GetById(int id)
         {
-            var user = _dbContext.Users.Where(o => o.UserId == id).FirstOrDefault();
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.UserId == id);
 
-            return user;
+            if (user != null)
+            {
+                return Ok(User);
+            }
+
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public User DeleteById(int id)
+        public ActionResult<User> DeleteById(int id)
         {
-            var user = _dbContext.Users.Where(o => o.UserId == id).FirstOrDefault();
-            _dbContext.Users.Remove(user);
-            _dbContext.SaveChanges();
-            return user;
+            var user = _dbContext.Users.FirstOrDefault(o => o.UserId == id);
+            if (user != null)
+            {
+                _dbContext.Users.Remove(user);
+                _dbContext.SaveChanges();
+                return Ok("Object Deleted.");
+            }
+
+            return NoContent();
         }
 
     }

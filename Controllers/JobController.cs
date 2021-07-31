@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UniResearch.API.Database;
 
 namespace UniResearch.API.Entity
@@ -48,7 +50,7 @@ namespace UniResearch.API.Entity
         }
 
         [HttpPost]
-        public Job Insert(InsertJob model)
+        public ActionResult<Job> Insert(InsertJob model)
         {
             var job = new Job
             {
@@ -65,37 +67,104 @@ namespace UniResearch.API.Entity
         }
 
         [HttpPut("{id}")]
-        public Job Update(int id, InsertJob model) 
+        public ActionResult<Job> Update(int id, InsertJob model) 
         {
-            var job = _dbContext.Jobs.Where(o => o.JobId==id).FirstOrDefault();
+            try
+            {
+                var erros = SetErrors(model);
+                if (erros.Errors.Count() > 0)
+                {
+                    return BadRequest(erros.Errors);
+                }
 
-            job.CompanyName = model.CompanyName;
-            job.Description = model.Description;
-            job.JobType = model.JobType;
-            job.Location = model.Location;
-            job.Salary = model.Salary;
- 
+                var job = _dbContext.Jobs.FirstOrDefault(o => o.JobId == id);
 
-            _dbContext.Jobs.Update(job);
-            _dbContext.SaveChanges();
-            return job;
+                job.CompanyName = model.CompanyName;
+                job.Description = model.Description;
+                job.JobType = model.JobType;
+                job.Location = model.Location;
+                job.Salary = model.Salary;
+
+
+                _dbContext.Jobs.Update(job);
+                _dbContext.SaveChanges();
+                return job;
+            }
+            catch (Exception ex) 
+            {
+                return Problem("There was an error updating Job record.");
+            }
+        }
+
+        public class ValidationError
+        {
+            public ValidationError()
+            {
+                Errors = new Dictionary<string, string>();
+            }
+            public Dictionary<string, string> Errors { get; set; }
+        }
+
+        public ValidationError SetErrors(InsertJob model)
+        {
+            var validationerror = new ValidationError();
+            if (string.IsNullOrWhiteSpace(model.CompanyName))
+            {
+                validationerror.Errors.Add("CompanyName", "CompanyName  is required.");
+            }
+            if (model.CompanyName.Length > 100)
+            {
+                validationerror.Errors.Add("CompanyName", "CompanyName too long.");
+            }
+            if (string.IsNullOrWhiteSpace(model.Description))
+            {
+                validationerror.Errors.Add("Description", "Description is required.");
+            }
+            if (!(model.JobType != null))
+            {
+                validationerror.Errors.Add("JobType", "JobType is required.");
+            }
+            if (string.IsNullOrWhiteSpace(model.Location))
+            {
+                validationerror.Errors.Add("Location", "Location  is required.");
+            }
+            if (!(model.Salary != null))
+            {
+                validationerror.Errors.Add("Salary", "Budget is required.");
+            }
+
+            //TODO: Add more validations here
+
+            return validationerror;
         }
 
         [HttpGet("{id}")]
-        public Job GetById(int id)
+        public async Task<ActionResult<Job>> GetById(int id)
         {
-            var job = _dbContext.Jobs.Where(o => o.JobId == id).FirstOrDefault();
+            var job = await _dbContext.Jobs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.JobId == id);
 
-            return job;
+            if (job != null)
+            {
+                return Ok(job);
+            }
+
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public Job DeleteById(int id)
+        public ActionResult<Job> DeleteById(int id)
         {
-            var job = _dbContext.Jobs.Where(o => o.JobId == id).FirstOrDefault();
-            _dbContext.Jobs.Remove(job);
-            _dbContext.SaveChanges();
-            return job;
+            var job = _dbContext.Jobs.FirstOrDefault(o => o.JobId == id);
+            if (job != null)
+            {
+                _dbContext.Jobs.Remove(job);
+                _dbContext.SaveChanges();
+                return Ok("Object Deleted.");
+            }
+
+            return NoContent();
         }
 
     }
