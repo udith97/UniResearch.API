@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UniResearch.API.ControllerServices;
 using UniResearch.API.Database;
+using UniResearch.API.DTOs;
 
 namespace UniResearch.API.Entity
 {
@@ -14,9 +16,12 @@ namespace UniResearch.API.Entity
     public class JobController : ControllerBase
     {
         private readonly UniResearchContext _dbContext;
-        public JobController(UniResearchContext dbContext)
+
+        private readonly JobService _jobService;
+        public JobController(UniResearchContext dbContext, JobService jobService)
         {
             _dbContext = dbContext;
+            _jobService = jobService;
         }
 
         //[HttpGet]
@@ -34,20 +39,28 @@ namespace UniResearch.API.Entity
 
         //}
 
+        //[HttpGet]
+        //public List<Job> GetJobs(string search)
+        //{
+        //    if (!string.IsNullOrWhiteSpace(search))
+        //    {
+        //        var query = _dbContext.Jobs.Where(o => EF.Functions.Like(o.CompanyName, $"%{search}%") || EF.Functions.Like(o.Location, $"%{search}%"));
+        //        //var sql = query.ToQueryString();
+        //        return query.ToList();
+
+
+        //    }
+        //    return _dbContext.Jobs.ToList();
+
+        //}
+
         [HttpGet]
-        public List<Job> GetJobs(string search)
+        public async Task<ActionResult<List<JobDTO>>> GetJobs(string search)
         {
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var query = _dbContext.Jobs.Where(o => EF.Functions.Like(o.CompanyName, $"%{search}%") || EF.Functions.Like(o.Location, $"%{search}%"));
-                //var sql = query.ToQueryString();
-                return query.ToList();
-
-
-            }
-            return _dbContext.Jobs.ToList();
-
+            return await _jobService.GetJobs(search);
         }
+
+
 
         [HttpPost]
         public ActionResult<Job> Insert(InsertJob model)
@@ -138,19 +151,25 @@ namespace UniResearch.API.Entity
             return validationerror;
         }
 
+        //[HttpGet("{id}")]
+        //public async Task<ActionResult<Job>> GetById(int id)
+        //{
+        //    var job = await _dbContext.Jobs
+        //        .AsNoTracking()
+        //        .FirstOrDefaultAsync(o => o.JobId == id);
+
+        //    if (job != null)
+        //    {
+        //        return Ok(job);
+        //    }
+
+        //    return NoContent();
+        //}
+
         [HttpGet("{id}")]
         public async Task<ActionResult<Job>> GetById(int id)
         {
-            var job = await _dbContext.Jobs
-                .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.JobId == id);
-
-            if (job != null)
-            {
-                return Ok(job);
-            }
-
-            return NoContent();
+            return await _jobService.GetByIdAsync(id);
         }
 
         [HttpDelete("{id}")]

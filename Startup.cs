@@ -11,7 +11,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using UniResearch.API.ControllerServices;
 using UniResearch.API.Database;
+using UniResearch.API.Repository;
 
 namespace UniResearch.API
 {
@@ -43,6 +45,19 @@ namespace UniResearch.API
                     .EnableSensitiveDataLogging() // <-- These two calls are optional but help
                     .EnableDetailedErrors(true)        // <-- with debugging (remove for production).
             );
+
+            services.AddScoped<JobService>();
+
+            services.AddTransient<JobRepository>();
+
+            services.AddScoped<ProjectService>();
+
+            services.AddTransient<ProjectRepository>();
+
+
+            services.AddScoped<UserService>();
+
+            services.AddTransient<UserRepository>();
 
             services.AddControllers();
             // services.AddSwaggerGen(c =>

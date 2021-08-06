@@ -5,7 +5,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using UniResearch.API.ControllerServices;
 using UniResearch.API.Database;
+using UniResearch.API.DTOs;
 using UniResearch.API.Entity;
 
 namespace UniResearch.API.Controllers
@@ -15,9 +17,12 @@ namespace UniResearch.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly UniResearchContext _dbContext;
-        public UserController(UniResearchContext dbContext)
+
+        private readonly UserService _userService;
+        public UserController(UniResearchContext dbContext, UserService userService)
         {
             _dbContext = dbContext;
+            _userService = userService;
         }
 
         //[HttpGet]
@@ -35,14 +40,9 @@ namespace UniResearch.API.Controllers
         //}
 
         [HttpGet]
-        public List<User> GetUsers(string search) 
+        public async Task<ActionResult<List<UserDTO>>> GetUsers(string search) 
         {
-            if (!string.IsNullOrWhiteSpace(search)) 
-            {
-                var query = _dbContext.Users.Where(o => EF.Functions.Like(o.FirstName, $"%{search}%") || EF.Functions.Like(o.LastName, $"%{search}%"));
-                return query.ToList();
-            }
-            return _dbContext.Users.ToList();
+            return await _userService.GetUsers(search);
         }
 
         [HttpPost]
@@ -142,16 +142,8 @@ namespace UniResearch.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<User>> GetById(int id)
         {
-            var user = await _dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.UserId == id);
+            return await _userService.GetByIdAsync(id);
 
-            if (user != null)
-            {
-                return Ok(User);
-            }
-
-            return NoContent();
         }
 
         [HttpDelete("{id}")]

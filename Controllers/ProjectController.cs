@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using UniResearch.API.ControllerServices;
 using UniResearch.API.Database;
+using UniResearch.API.DTOs;
 using UniResearch.API.Entity;
 
 [ApiController]
@@ -13,9 +15,12 @@ using UniResearch.API.Entity;
 public class ProjectController : ControllerBase
 {
     private readonly UniResearchContext _dbContext;
-    public ProjectController(UniResearchContext dbContext)
+
+    private readonly ProjectService _projectService;
+    public ProjectController(UniResearchContext dbContext, ProjectService projectService)
     {
         _dbContext = dbContext;
+        _projectService = projectService;
     }
 
     //[HttpGet]
@@ -34,14 +39,9 @@ public class ProjectController : ControllerBase
     //}
 
     [HttpGet]
-    public List<Project> GetProjects(string search)
+    public async Task<ActionResult<List<ProjectDTO>>> GetProjects(string search)
     {
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var query = _dbContext.Projects.Where(o => EF.Functions.Like(o.ProjectName, $"%{search}%"));
-            return query.ToList();
-        }
-        return _dbContext.Projects.ToList();
+        return await _projectService.GetProjects(search);
     }
 
     [HttpPost]
@@ -66,11 +66,7 @@ public class ProjectController : ControllerBase
     {
         try
         {
-            //if (string.IsNullOrWhiteSpace(model.ProjectName))
-            //{
-            //    return BadRequest("Project Name Required.");
-            //}
-
+            
             var erros = SetErrors(model);
             if (erros.Errors.Count() > 0) 
             {
@@ -135,20 +131,26 @@ public class ProjectController : ControllerBase
         //TODO: Add more validations here
 
         return validationerror;
-    } 
+    }
+
+    //[HttpGet("{id}")]
+    //public async Task<ActionResult<Project>> GetById(int id)
+    //{
+    //    var project = await _dbContext.Projects
+    //        .AsNoTracking() //retriev data wihtout tracking this means retriev object cannot be updated.(read only)
+    //        .FirstOrDefaultAsync(o => o.ProjectId == id);
+    //    if (project != null) 
+    //    {
+    //        return Ok(project);
+    //    }
+
+    //    return NoContent();
+    //}
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Project>> GetById(int id)
     {
-        var project = await _dbContext.Projects
-            .AsNoTracking() //retriev data wihtout tracking this means retriev object cannot be updated.(read only)
-            .FirstOrDefaultAsync(o => o.ProjectId == id);
-        if (project != null) 
-        {
-            return Ok(project);
-        }
-
-        return NoContent();
+        return await _projectService.GetByIdAsync(id);
     }
 
     [HttpDelete("{id}")]
